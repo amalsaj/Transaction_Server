@@ -8,6 +8,7 @@ const connectDB = require("./db/db");
 const User = require("./model/userModel");
 const Data = require("./model/dummyData");
 const generateTokensAndSetCookies = require("./utils/generateTokens");
+const cors = require("cors")
 // / Serve images from the 'uploads' directory
 
 // Connect to MongoDB
@@ -20,6 +21,8 @@ app.use(bodyParser.json());
 
 // / Serve static files from the React app
 app.use(express.static(path.join(__dirname, "../client/transaction/build")));
+
+app.use(cors())
 
 // Route to serve the React app
 app.get("/", (req, res) => {
@@ -79,41 +82,40 @@ app.post("/signup", async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
+  console.log("in loginnnnnn");
+  console.log(req.body);
   const { username, password } = req.body;
-  // Check if username and password are provided
-
-  if (!username || !password) {
-    return res.status(400).send("invalid username or password");
-  }
 
   try {
+    if (!username || !password) {
+      return res.status(400).json({ message: "Invalid username or password" });
+    }
+
     const user = await User.findOne({ username });
     if (!user) {
-      return res.status(404).send("User not found.");
+      return res.status(404).json({ message: "User not found" });
     }
 
-    if (user.type === "credit") {
-      res.status(201).json({ credit: "true" });
-      // res.redirect("/Credit");
-    } else if (user.type === "debit") {
-      res.status(201).json({ credit: "false" });
-      // res.redirect("/Debit");
-    } else {
-      return res.status(404).send("not found");
-    }
-
-    // Check if the password matches
     if (user.password !== password) {
-      return res.status(401).send("Incorrect password.");
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    let message;
+    if (user.type === "credit") {
+      message = "true";
+    } else if (user.type === "debit") {
+      message = "false";
+    } else {
+      return res.status(404).json({ message: "User type not found" });
     }
 
     // TOKEN GENERATOR
-    generateTokensAndSetCookies(user._id, res);
+    // generateTokensAndSetCookies(user._id, res);
 
-    res.json({ message: "Sign in successful", user });
+    return res.status(200).json({ message, user });
   } catch (error) {
     console.error("Error:", error);
-    res.status(500).send("Internal server error.");
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
